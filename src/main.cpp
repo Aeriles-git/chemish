@@ -7,6 +7,7 @@
 
 #include <chemish/debug.hpp>
 #include <chemish/device.hpp>
+#include <chemish/swapchain.hpp>
 
 int main() {
   SDL_Init(SDL_INIT_VIDEO);
@@ -55,6 +56,8 @@ int main() {
   }
 
   chemish::Device device = chemish::createDevice(instance, surface);
+  chemish::Swapchain swapchain =
+      chemish::createSwapchain(device.physical, device.logical, surface);
 
   bool running = true;
   while (running) {
@@ -68,6 +71,7 @@ int main() {
   }
 
   // Destroy
+  chemish::destroySwapchain(device.logical, swapchain);
   chemish::destroyDevice(device);
   SDL_Vulkan_DestroySurface(instance, surface, nullptr);
   chemish::destroyDebugMessenger(instance, messenger);

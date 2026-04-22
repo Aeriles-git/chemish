@@ -2,6 +2,7 @@ add_executable(chemish
     main.cpp
     debug.cpp
     device.cpp
+    swapchain.cpp
 )
 
 target_include_directories(chemish PRIVATE
