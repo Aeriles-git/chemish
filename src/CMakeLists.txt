@@ -7,9 +7,11 @@ target_include_directories(chemish PRIVATE
 )
 
 find_package(SDL3 REQUIRED CONFIG)
+find_package(Vulkan REQUIRED)
 
 target_link_libraries(chemish PRIVATE
     SDL3::SDL3
+    Vulkan::Vulkan
 )
 
 target_compile_options(chemish PRIVATE
