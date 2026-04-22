@@ -5,7 +5,6 @@ namespace chemish {
 FrameSync createFrameSync(VkDevice device) {
   FrameSync sync{};
 
-  // Fence starts signaled so the first frame doesn't deadlock on wait.
   VkFenceCreateInfo fenceInfo{};
   fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
   fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
@@ -13,7 +12,6 @@ FrameSync createFrameSync(VkDevice device) {
 
   VkSemaphoreCreateInfo semInfo{};
   semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-  vkCreateSemaphore(device, &semInfo, nullptr, &sync.imageAvailable);
   vkCreateSemaphore(device, &semInfo, nullptr, &sync.renderFinished);
 
   return sync;
@@ -21,8 +19,26 @@ FrameSync createFrameSync(VkDevice device) {
 
 void destroyFrameSync(VkDevice device, FrameSync &sync) {
   vkDestroyFence(device, sync.inFlight, nullptr);
-  vkDestroySemaphore(device, sync.imageAvailable, nullptr);
   vkDestroySemaphore(device, sync.renderFinished, nullptr);
+}
+
+std::vector<VkSemaphore> createImageSemaphores(VkDevice device,
+                                               uint32_t count) {
+  std::vector<VkSemaphore> semaphores(count);
+  VkSemaphoreCreateInfo semInfo{};
+  semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+  for (auto &s : semaphores) {
+    vkCreateSemaphore(device, &semInfo, nullptr, &s);
+  }
+  return semaphores;
+}
+
+void destroyImageSemaphores(VkDevice device,
+                            std::vector<VkSemaphore> &semaphores) {
+  for (auto &s : semaphores) {
+    vkDestroySemaphore(device, s, nullptr);
+  }
+  semaphores.clear();
 }
 
 } // namespace chemish

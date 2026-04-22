@@ -32,6 +32,11 @@ Device createDevice(VkInstance instance, VkSurfaceKHR surface) {
     }
   }
 
+  VkPhysicalDeviceVulkan13Features f13{};
+  f13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+  f13.synchronization2 = VK_TRUE;
+  f13.dynamicRendering = VK_TRUE;
+
   // Create the logical device with one queue and the swapchain extension.
   float priority = 1.0f;
   VkDeviceQueueCreateInfo qci{};
@@ -48,6 +53,7 @@ Device createDevice(VkInstance instance, VkSurfaceKHR surface) {
   dci.pQueueCreateInfos = &qci;
   dci.enabledExtensionCount = 1;
   dci.ppEnabledExtensionNames = deviceExts;
+  dci.pNext = &f13;
 
   vkCreateDevice(device.physical, &dci, nullptr, &device.logical);
   vkGetDeviceQueue(device.logical, device.queueFamily, 0, &device.queue);

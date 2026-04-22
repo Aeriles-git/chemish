@@ -1,3 +1,6 @@
+find_package(SDL3 REQUIRED CONFIG)
+find_package(Vulkan REQUIRED)
+
 add_executable(chemish
     main.cpp
     debug.cpp
@@ -11,9 +14,6 @@ target_include_directories(chemish PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 
-find_package(SDL3 REQUIRED CONFIG)
-find_package(Vulkan REQUIRED)
-
 target_link_libraries(chemish PRIVATE
     SDL3::SDL3
     Vulkan::Vulkan
@@ -22,3 +22,5 @@ target_link_libraries(chemish PRIVATE
 target_compile_options(chemish PRIVATE
     -Wall -Wextra -Wpedantic
 )
+
+add_shader(chemish ${CMAKE_SOURCE_DIR}/shaders/triangle.slang)
