@@ -1,5 +1,6 @@
 add_executable(chemish
     main.cpp
+    debug.cpp
 )
 
 target_include_directories(chemish PRIVATE
