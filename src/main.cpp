@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.h>
 
 #include <chemish/debug.hpp>
+#include <chemish/device.hpp>
 
 int main() {
   SDL_Init(SDL_INIT_VIDEO);
@@ -45,6 +46,16 @@ int main() {
 
   VkDebugUtilsMessengerEXT messenger = chemish::createDebugMessenger(instance);
 
+  // Vulkan surface
+  VkSurfaceKHR surface = VK_NULL_HANDLE;
+  if (!SDL_Vulkan_CreateSurface(window, instance, nullptr, &surface)) {
+    std::fprintf(stderr, "SDL_Vulkan_CreateSurface failed: %s\n",
+                 SDL_GetError());
+    return 1;
+  }
+
+  chemish::Device device = chemish::createDevice(instance, surface);
+
   bool running = true;
   while (running) {
     SDL_Event event;
@@ -56,6 +67,9 @@ int main() {
     }
   }
 
+  // Destroy
+  chemish::destroyDevice(device);
+  SDL_Vulkan_DestroySurface(instance, surface, nullptr);
   chemish::destroyDebugMessenger(instance, messenger);
 
   SDL_DestroyWindow(window);
