@@ -5,6 +5,7 @@
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 
+#include <chemish/commands.hpp>
 #include <chemish/debug.hpp>
 #include <chemish/device.hpp>
 #include <chemish/swapchain.hpp>
@@ -58,6 +59,8 @@ int main() {
   chemish::Device device = chemish::createDevice(instance, surface);
   chemish::Swapchain swapchain =
       chemish::createSwapchain(device.physical, device.logical, surface);
+  chemish::Commands commands =
+      chemish::createCommands(device.logical, device.queueFamily);
 
   bool running = true;
   while (running) {
@@ -71,6 +74,7 @@ int main() {
   }
 
   // Destroy
+  chemish::destroyCommands(device.logical, commands);
   chemish::destroySwapchain(device.logical, swapchain);
   chemish::destroyDevice(device);
   SDL_Vulkan_DestroySurface(instance, surface, nullptr);

@@ -3,6 +3,8 @@ add_executable(chemish
     debug.cpp
     device.cpp
     swapchain.cpp
+    commands.cpp
+    sync.cpp
 )
 
 target_include_directories(chemish PRIVATE
