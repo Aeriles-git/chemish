@@ -8,6 +8,8 @@ add_executable(chemish
     swapchain.cpp
     commands.cpp
     sync.cpp
+    shader.cpp
+    pipeline.cpp
 )
 
 target_include_directories(chemish PRIVATE

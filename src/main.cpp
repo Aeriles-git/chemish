@@ -8,6 +8,8 @@
 #include <chemish/commands.hpp>
 #include <chemish/debug.hpp>
 #include <chemish/device.hpp>
+#include <chemish/pipeline.hpp>
+#include <chemish/shader.hpp>
 #include <chemish/swapchain.hpp>
 #include <chemish/sync.hpp>
 
@@ -67,6 +69,10 @@ int main() {
   std::vector<VkSemaphore> imageSemaphores = chemish::createImageSemaphores(
       device.logical, (uint32_t)swapchain.images.size());
   uint32_t semaphoreIndex = 0;
+  VkShaderModule shaderModule =
+      chemish::loadShader(device.logical, "build/shaders/triangle.spv");
+  chemish::Pipeline pipeline =
+      chemish::createPipeline(device.logical, shaderModule, swapchain.format);
 
   // Render loop
   bool running = true;
@@ -186,6 +192,8 @@ int main() {
   vkDeviceWaitIdle(device.logical);
 
   // Cleanup (reverse of creation).
+  chemish::destroyPipeline(device.logical, pipeline);
+  chemish::destroyShader(device.logical, shaderModule);
   chemish::destroyImageSemaphores(device.logical, imageSemaphores);
   chemish::destroyFrameSync(device.logical, sync);
   chemish::destroyCommands(device.logical, commands);
