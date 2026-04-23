@@ -4,7 +4,7 @@ find_package(Vulkan REQUIRED)
 add_executable(chemish
     main.cpp
     debug.cpp
-    pipeline.cpp
+    rhi/vulkan/pipeline.cpp
     rhi/vulkan/device.cpp
     rhi/vulkan/swapchain.cpp
     rhi/vulkan/commands.cpp

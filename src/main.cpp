@@ -4,9 +4,9 @@
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 
-#include <chemish/pipeline.hpp>
 #include <chemish/rhi/vulkan/commands.hpp>
 #include <chemish/rhi/vulkan/device.hpp>
+#include <chemish/rhi/vulkan/pipeline.hpp>
 #include <chemish/rhi/vulkan/shader.hpp>
 #include <chemish/rhi/vulkan/swapchain.hpp>
 #include <chemish/rhi/vulkan/sync.hpp>
@@ -29,8 +29,8 @@ int main() {
     uint32_t semaphoreIndex = 0;
     chemish::rhi::vulkan::Shader shader{rhiDevice,
                                         "build/shaders/triangle.spv"};
-    chemish::Pipeline pipeline = chemish::createPipeline(
-        rhiDevice.getLogical(), shader.getModule(), swapchain.getFormat());
+    chemish::rhi::vulkan::Pipeline pipeline{rhiDevice, shader,
+                                            swapchain.getFormat()};
 
     bool running = true;
     while (running) {
@@ -121,7 +121,7 @@ int main() {
       vkCmdSetScissor(commands.getBuffer(), 0, 1, &scissor);
 
       vkCmdBindPipeline(commands.getBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        pipeline.handle);
+                        pipeline.getHandle());
       vkCmdDraw(commands.getBuffer(), 3, 1, 0, 0);
 
       vkCmdEndRendering(commands.getBuffer());
@@ -181,7 +181,6 @@ int main() {
 
     vkDeviceWaitIdle(rhiDevice.getLogical());
 
-    chemish::destroyPipeline(rhiDevice.getLogical(), pipeline);
   } // all RAII objects destroyed here
 
   SDL_DestroyWindow(window);
