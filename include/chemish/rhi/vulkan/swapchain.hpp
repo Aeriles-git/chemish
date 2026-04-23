@@ -16,10 +16,9 @@ public:
   Swapchain(const Swapchain &) = delete;
   Swapchain &operator=(const Swapchain &) = delete;
 
-  // Temporary accessors for the migration.
-  VkSwapchainKHR getHandle() const { return handle; }
-  VkFormat getFormat() const { return format; }
-  VkExtent2D getExtent() const { return extent; }
+  const VkSwapchainKHR &getHandle() const { return handle; }
+  const VkFormat &getFormat() const { return format; }
+  const VkExtent2D &getExtent() const { return extent; }
   const std::vector<VkImage> &getImages() const { return images; }
 
 private:

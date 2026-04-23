@@ -16,11 +16,11 @@ public:
   Device(const Device &) = delete;
   Device &operator=(const Device &) = delete;
 
-  VkInstance getInstance() const { return instance; }
-  VkSurfaceKHR getSurface() const { return surface; }
-  VkPhysicalDevice getPhysical() const { return physical; }
-  VkDevice getLogical() const { return logical; }
-  VkQueue getQueue() const { return queue; }
+  const VkInstance &getInstance() const { return instance; }
+  const VkSurfaceKHR &getSurface() const { return surface; }
+  const VkPhysicalDevice &getPhysical() const { return physical; }
+  const VkDevice &getLogical() const { return logical; }
+  const VkQueue &getQueue() const { return queue; }
   uint32_t getQueueFamily() const { return queueFamily; }
 
 private:

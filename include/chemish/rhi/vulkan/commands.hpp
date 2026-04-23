@@ -14,7 +14,7 @@ public:
   Commands(const Commands &) = delete;
   Commands &operator=(const Commands &) = delete;
 
-  VkCommandBuffer getBuffer() const { return buffer; }
+  const VkCommandBuffer &getBuffer() const { return buffer; }
 
 private:
   Device &device;

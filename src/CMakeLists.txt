@@ -4,13 +4,13 @@ find_package(Vulkan REQUIRED)
 add_executable(chemish
     main.cpp
     debug.cpp
-    sync.cpp
-    shader.cpp
     pipeline.cpp
     rhi/vulkan/device.cpp
     rhi/vulkan/swapchain.cpp
     rhi/vulkan/commands.cpp
-)
+    rhi/vulkan/sync.cpp
+    rhi/vulkan/shader.cpp
+  )
 
 target_include_directories(chemish PRIVATE
     ${CMAKE_SOURCE_DIR}/include

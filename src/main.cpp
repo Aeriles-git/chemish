@@ -1,5 +1,4 @@
 #include <cstdio>
-#include <vector>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -8,9 +7,9 @@
 #include <chemish/pipeline.hpp>
 #include <chemish/rhi/vulkan/commands.hpp>
 #include <chemish/rhi/vulkan/device.hpp>
+#include <chemish/rhi/vulkan/shader.hpp>
 #include <chemish/rhi/vulkan/swapchain.hpp>
-#include <chemish/shader.hpp>
-#include <chemish/sync.hpp>
+#include <chemish/rhi/vulkan/sync.hpp>
 
 int main() {
   SDL_Init(SDL_INIT_VIDEO);
@@ -21,16 +20,17 @@ int main() {
     chemish::rhi::vulkan::Device rhiDevice{window};
     chemish::rhi::vulkan::Swapchain swapchain{rhiDevice};
     chemish::rhi::vulkan::Commands commands{rhiDevice};
-    chemish::FrameSync sync = chemish::createFrameSync(rhiDevice.getLogical());
-    std::vector<VkSemaphore> imageSemaphores = chemish::createImageSemaphores(
-        rhiDevice.getLogical(), (uint32_t)swapchain.getImages().size());
-    std::vector<VkSemaphore> renderSemaphores = chemish::createImageSemaphores(
-        rhiDevice.getLogical(), (uint32_t)swapchain.getImages().size());
+    chemish::rhi::vulkan::FrameSync sync{rhiDevice};
+    chemish::rhi::vulkan::ImageSemaphores imageSemaphores{
+        rhiDevice, (uint32_t)swapchain.getImages().size()};
+    chemish::rhi::vulkan::ImageSemaphores renderSemaphores{
+        rhiDevice, (uint32_t)swapchain.getImages().size()};
+
     uint32_t semaphoreIndex = 0;
-    VkShaderModule shaderModule = chemish::loadShader(
-        rhiDevice.getLogical(), "build/shaders/triangle.spv");
+    chemish::rhi::vulkan::Shader shader{rhiDevice,
+                                        "build/shaders/triangle.spv"};
     chemish::Pipeline pipeline = chemish::createPipeline(
-        rhiDevice.getLogical(), shaderModule, swapchain.getFormat());
+        rhiDevice.getLogical(), shader.getModule(), swapchain.getFormat());
 
     bool running = true;
     while (running) {
@@ -42,9 +42,9 @@ int main() {
           running = false;
       }
 
-      vkWaitForFences(rhiDevice.getLogical(), 1, &sync.inFlight, VK_TRUE,
+      vkWaitForFences(rhiDevice.getLogical(), 1, &sync.getFence(), VK_TRUE,
                       UINT64_MAX);
-      vkResetFences(rhiDevice.getLogical(), 1, &sync.inFlight);
+      vkResetFences(rhiDevice.getLogical(), 1, &sync.getFence());
 
       VkSemaphore imageAvailable = imageSemaphores[semaphoreIndex];
       semaphoreIndex = (semaphoreIndex + 1) % imageSemaphores.size();
@@ -165,16 +165,14 @@ int main() {
       submit.signalSemaphoreInfoCount = 1;
       submit.pSignalSemaphoreInfos = &signalSem;
 
-      vkQueueSubmit2(rhiDevice.getQueue(), 1, &submit, sync.inFlight);
-
-      VkSwapchainKHR swapchainHandle = swapchain.getHandle();
+      vkQueueSubmit2(rhiDevice.getQueue(), 1, &submit, sync.getFence());
 
       VkPresentInfoKHR present{};
       present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
       present.waitSemaphoreCount = 1;
       present.pWaitSemaphores = &renderFinished;
       present.swapchainCount = 1;
-      present.pSwapchains = &swapchainHandle;
+      present.pSwapchains = &swapchain.getHandle();
       present.pImageIndices = &imageIndex;
       vkQueuePresentKHR(rhiDevice.getQueue(), &present);
 
@@ -184,11 +182,7 @@ int main() {
     vkDeviceWaitIdle(rhiDevice.getLogical());
 
     chemish::destroyPipeline(rhiDevice.getLogical(), pipeline);
-    chemish::destroyShader(rhiDevice.getLogical(), shaderModule);
-    chemish::destroyImageSemaphores(rhiDevice.getLogical(), imageSemaphores);
-    chemish::destroyImageSemaphores(rhiDevice.getLogical(), renderSemaphores);
-    chemish::destroyFrameSync(rhiDevice.getLogical(), sync);
-  } // Swapchain and rhiDevice destructors run here.
+  } // all RAII objects destroyed here
 
   SDL_DestroyWindow(window);
   SDL_Quit();
