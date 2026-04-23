@@ -68,6 +68,8 @@ int main() {
   chemish::FrameSync sync = chemish::createFrameSync(device.logical);
   std::vector<VkSemaphore> imageSemaphores = chemish::createImageSemaphores(
       device.logical, (uint32_t)swapchain.images.size());
+  std::vector<VkSemaphore> renderSemaphores = chemish::createImageSemaphores(
+      device.logical, (uint32_t)swapchain.images.size());
   uint32_t semaphoreIndex = 0;
   VkShaderModule shaderModule =
       chemish::loadShader(device.logical, "build/shaders/triangle.spv");
@@ -97,6 +99,8 @@ int main() {
     vkAcquireNextImageKHR(device.logical, swapchain.handle, UINT64_MAX,
                           imageAvailable, VK_NULL_HANDLE, &imageIndex);
 
+    VkSemaphore renderFinished = renderSemaphores[imageIndex];
+
     // 3. Record commands.
     vkResetCommandBuffer(commands.buffer, 0);
 
@@ -104,43 +108,83 @@ int main() {
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     vkBeginCommandBuffer(commands.buffer, &beginInfo);
 
-    // Transition: UNDEFINED -> TRANSFER_DST_OPTIMAL
-    VkImageMemoryBarrier2 toClear{};
-    toClear.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-    toClear.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-    toClear.srcAccessMask = 0;
-    toClear.dstStageMask = VK_PIPELINE_STAGE_2_CLEAR_BIT;
-    toClear.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-    toClear.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    toClear.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    toClear.image = swapchain.images[imageIndex];
-    toClear.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    toClear.subresourceRange.levelCount = 1;
-    toClear.subresourceRange.layerCount = 1;
+    // Transition: UNDEFINED -> COLOR_ATTACHMENT_OPTIMAL
+    VkImageMemoryBarrier2 toDraw{};
+    toDraw.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+    toDraw.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+    toDraw.srcAccessMask = 0;
+    toDraw.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+    toDraw.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+    toDraw.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    toDraw.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    toDraw.image = swapchain.images[imageIndex];
+    toDraw.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    toDraw.subresourceRange.levelCount = 1;
+    toDraw.subresourceRange.layerCount = 1;
 
     VkDependencyInfo dep1{};
     dep1.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
     dep1.imageMemoryBarrierCount = 1;
-    dep1.pImageMemoryBarriers = &toClear;
+    dep1.pImageMemoryBarriers = &toDraw;
     vkCmdPipelineBarrier2(commands.buffer, &dep1);
 
-    // Clear to dark blue.
-    VkClearColorValue clearColor{{0.1f, 0.1f, 0.2f, 1.0f}};
-    VkImageSubresourceRange range{};
-    range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    range.levelCount = 1;
-    range.layerCount = 1;
-    vkCmdClearColorImage(commands.buffer, swapchain.images[imageIndex],
-                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1,
-                         &range);
+    // We need a view of the swapchain image to render into.
+    VkImageViewCreateInfo viewInfo{};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = swapchain.images[imageIndex];
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = swapchain.format;
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.layerCount = 1;
 
-    // Transition: TRANSFER_DST_OPTIMAL -> PRESENT_SRC
-    VkImageMemoryBarrier2 toPresent = toClear;
-    toPresent.srcStageMask = VK_PIPELINE_STAGE_2_CLEAR_BIT;
-    toPresent.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+    VkImageView imageView = VK_NULL_HANDLE;
+    vkCreateImageView(device.logical, &viewInfo, nullptr, &imageView);
+
+    // Begin dynamic rendering.
+    VkRenderingAttachmentInfo colorAttachment{};
+    colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    colorAttachment.imageView = imageView;
+    colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment.clearValue.color = {{0.1f, 0.1f, 0.2f, 1.0f}};
+
+    VkRenderingInfo renderingInfo{};
+    renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+    renderingInfo.renderArea.extent = swapchain.extent;
+    renderingInfo.layerCount = 1;
+    renderingInfo.colorAttachmentCount = 1;
+    renderingInfo.pColorAttachments = &colorAttachment;
+
+    vkCmdBeginRendering(commands.buffer, &renderingInfo);
+
+    // Viewport + scissor (set dynamically since the pipeline doesn't bake
+    // them).
+    VkViewport vp{};
+    vp.width = (float)swapchain.extent.width;
+    vp.height = (float)swapchain.extent.height;
+    vp.maxDepth = 1.0f;
+    vkCmdSetViewport(commands.buffer, 0, 1, &vp);
+
+    VkRect2D scissor{};
+    scissor.extent = swapchain.extent;
+    vkCmdSetScissor(commands.buffer, 0, 1, &scissor);
+
+    // Draw.
+    vkCmdBindPipeline(commands.buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      pipeline.handle);
+    vkCmdDraw(commands.buffer, 3, 1, 0, 0);
+
+    vkCmdEndRendering(commands.buffer);
+
+    // Transition: COLOR_ATTACHMENT_OPTIMAL -> PRESENT_SRC
+    VkImageMemoryBarrier2 toPresent = toDraw;
+    toPresent.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+    toPresent.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
     toPresent.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
     toPresent.dstAccessMask = 0;
-    toPresent.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    toPresent.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     toPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     VkDependencyInfo dep2{};
@@ -159,11 +203,11 @@ int main() {
     VkSemaphoreSubmitInfo waitSem{};
     waitSem.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
     waitSem.semaphore = imageAvailable;
-    waitSem.stageMask = VK_PIPELINE_STAGE_2_CLEAR_BIT;
+    waitSem.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 
     VkSemaphoreSubmitInfo signalSem{};
     signalSem.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-    signalSem.semaphore = sync.renderFinished;
+    signalSem.semaphore = renderFinished;
     signalSem.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 
     VkSubmitInfo2 submit{};
@@ -175,17 +219,23 @@ int main() {
     submit.signalSemaphoreInfoCount = 1;
     submit.pSignalSemaphoreInfos = &signalSem;
 
-    vkQueueSubmit2(device.queue, 1, &submit, sync.inFlight);
+    VkResult submitResult =
+        vkQueueSubmit2(device.queue, 1, &submit, sync.inFlight);
+    if (submitResult != VK_SUCCESS) {
+      std::fprintf(stderr, "vkQueueSubmit2 failed: %d\n", submitResult);
+    }
 
     // 5. Present.
     VkPresentInfoKHR present{};
     present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     present.waitSemaphoreCount = 1;
-    present.pWaitSemaphores = &sync.renderFinished;
+    present.pWaitSemaphores = &renderFinished;
     present.swapchainCount = 1;
     present.pSwapchains = &swapchain.handle;
     present.pImageIndices = &imageIndex;
     vkQueuePresentKHR(device.queue, &present);
+
+    vkDestroyImageView(device.logical, imageView, nullptr);
   }
 
   // Wait for GPU before destroying anything.
@@ -195,6 +245,7 @@ int main() {
   chemish::destroyPipeline(device.logical, pipeline);
   chemish::destroyShader(device.logical, shaderModule);
   chemish::destroyImageSemaphores(device.logical, imageSemaphores);
+  chemish::destroyImageSemaphores(device.logical, renderSemaphores);
   chemish::destroyFrameSync(device.logical, sync);
   chemish::destroyCommands(device.logical, commands);
   chemish::destroySwapchain(device.logical, swapchain);

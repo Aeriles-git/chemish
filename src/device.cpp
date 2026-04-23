@@ -32,10 +32,15 @@ Device createDevice(VkInstance instance, VkSurfaceKHR surface) {
     }
   }
 
+  VkPhysicalDeviceVulkan11Features f11{};
+  f11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+  f11.shaderDrawParameters = VK_TRUE;
+
   VkPhysicalDeviceVulkan13Features f13{};
   f13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
   f13.synchronization2 = VK_TRUE;
   f13.dynamicRendering = VK_TRUE;
+  f13.pNext = &f11;
 
   // Create the logical device with one queue and the swapchain extension.
   float priority = 1.0f;

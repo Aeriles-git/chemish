@@ -6,8 +6,7 @@
 namespace chemish {
 
 struct FrameSync {
-  VkFence inFlight = VK_NULL_HANDLE;           // CPU waits on this
-  VkSemaphore renderFinished = VK_NULL_HANDLE; // GPU waits before presenting
+  VkFence inFlight = VK_NULL_HANDLE; // CPU waits on this
 };
 
 FrameSync createFrameSync(VkDevice device);

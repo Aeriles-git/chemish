@@ -10,16 +10,11 @@ FrameSync createFrameSync(VkDevice device) {
   fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
   vkCreateFence(device, &fenceInfo, nullptr, &sync.inFlight);
 
-  VkSemaphoreCreateInfo semInfo{};
-  semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-  vkCreateSemaphore(device, &semInfo, nullptr, &sync.renderFinished);
-
   return sync;
 }
 
 void destroyFrameSync(VkDevice device, FrameSync &sync) {
   vkDestroyFence(device, sync.inFlight, nullptr);
-  vkDestroySemaphore(device, sync.renderFinished, nullptr);
 }
 
 std::vector<VkSemaphore> createImageSemaphores(VkDevice device,
