@@ -10,6 +10,7 @@ add_executable(chemish
     sync.cpp
     shader.cpp
     pipeline.cpp
+    rhi/vulkan/device.cpp
 )
 
 target_include_directories(chemish PRIVATE

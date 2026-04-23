@@ -9,6 +9,7 @@
 #include <chemish/debug.hpp>
 #include <chemish/device.hpp>
 #include <chemish/pipeline.hpp>
+#include <chemish/rhi/vulkan/device.hpp>
 #include <chemish/shader.hpp>
 #include <chemish/swapchain.hpp>
 #include <chemish/sync.hpp>
@@ -18,63 +19,22 @@ int main() {
   SDL_Window *window =
       SDL_CreateWindow("chemish", 1280, 720, SDL_WINDOW_VULKAN);
 
-  // Instance
-  VkApplicationInfo appInfo{};
-  appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-  appInfo.pApplicationName = "chemish";
-  appInfo.apiVersion = VK_API_VERSION_1_4;
-
-  Uint32 extCount = 0;
-  const char *const *sdlExts = SDL_Vulkan_GetInstanceExtensions(&extCount);
-  std::vector<const char *> extensions(sdlExts, sdlExts + extCount);
-  extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-
-  const char *layers[] = {chemish::kValidationLayerName};
-
-  VkDebugUtilsMessengerCreateInfoEXT dbgInfo;
-  chemish::fillDebugMessengerInfo(dbgInfo);
-
-  VkInstanceCreateInfo instanceInfo{};
-  instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-  instanceInfo.pNext = &dbgInfo;
-  instanceInfo.pApplicationInfo = &appInfo;
-  instanceInfo.enabledLayerCount = 1;
-  instanceInfo.ppEnabledLayerNames = layers;
-  instanceInfo.enabledExtensionCount = (uint32_t)extensions.size();
-  instanceInfo.ppEnabledExtensionNames = extensions.data();
-
-  VkInstance instance = VK_NULL_HANDLE;
-  if (vkCreateInstance(&instanceInfo, nullptr, &instance) != VK_SUCCESS) {
-    std::fprintf(stderr, "vkCreateInstance failed\n");
-    return 1;
-  }
-
-  VkDebugUtilsMessengerEXT messenger = chemish::createDebugMessenger(instance);
-
-  // Surface
-  VkSurfaceKHR surface = VK_NULL_HANDLE;
-  if (!SDL_Vulkan_CreateSurface(window, instance, nullptr, &surface)) {
-    std::fprintf(stderr, "SDL_Vulkan_CreateSurface failed: %s\n",
-                 SDL_GetError());
-    return 1;
-  }
-
-  // Device, swapchain, commands, sync
-  chemish::Device device = chemish::createDevice(instance, surface);
-  chemish::Swapchain swapchain =
-      chemish::createSwapchain(device.physical, device.logical, surface);
-  chemish::Commands commands =
-      chemish::createCommands(device.logical, device.queueFamily);
-  chemish::FrameSync sync = chemish::createFrameSync(device.logical);
+  // rhiDevice.getInstance()
+  chemish::rhi::vulkan::Device rhiDevice{window};
+  chemish::Swapchain swapchain = chemish::createSwapchain(
+      rhiDevice.getPhysical(), rhiDevice.getLogical(), rhiDevice.getSurface());
+  chemish::Commands commands = chemish::createCommands(
+      rhiDevice.getLogical(), rhiDevice.getQueueFamily());
+  chemish::FrameSync sync = chemish::createFrameSync(rhiDevice.getLogical());
   std::vector<VkSemaphore> imageSemaphores = chemish::createImageSemaphores(
-      device.logical, (uint32_t)swapchain.images.size());
+      rhiDevice.getLogical(), (uint32_t)swapchain.images.size());
   std::vector<VkSemaphore> renderSemaphores = chemish::createImageSemaphores(
-      device.logical, (uint32_t)swapchain.images.size());
+      rhiDevice.getLogical(), (uint32_t)swapchain.images.size());
   uint32_t semaphoreIndex = 0;
   VkShaderModule shaderModule =
-      chemish::loadShader(device.logical, "build/shaders/triangle.spv");
-  chemish::Pipeline pipeline =
-      chemish::createPipeline(device.logical, shaderModule, swapchain.format);
+      chemish::loadShader(rhiDevice.getLogical(), "build/shaders/triangle.spv");
+  chemish::Pipeline pipeline = chemish::createPipeline(
+      rhiDevice.getLogical(), shaderModule, swapchain.format);
 
   // Render loop
   bool running = true;
@@ -88,15 +48,16 @@ int main() {
     }
 
     // 1. Wait for the previous frame's GPU work to finish.
-    vkWaitForFences(device.logical, 1, &sync.inFlight, VK_TRUE, UINT64_MAX);
-    vkResetFences(device.logical, 1, &sync.inFlight);
+    vkWaitForFences(rhiDevice.getLogical(), 1, &sync.inFlight, VK_TRUE,
+                    UINT64_MAX);
+    vkResetFences(rhiDevice.getLogical(), 1, &sync.inFlight);
 
     // 2. Acquire the next swapchain image.
     VkSemaphore imageAvailable = imageSemaphores[semaphoreIndex];
     semaphoreIndex = (semaphoreIndex + 1) % imageSemaphores.size();
 
     uint32_t imageIndex = 0;
-    vkAcquireNextImageKHR(device.logical, swapchain.handle, UINT64_MAX,
+    vkAcquireNextImageKHR(rhiDevice.getLogical(), swapchain.handle, UINT64_MAX,
                           imageAvailable, VK_NULL_HANDLE, &imageIndex);
 
     VkSemaphore renderFinished = renderSemaphores[imageIndex];
@@ -139,7 +100,7 @@ int main() {
     viewInfo.subresourceRange.layerCount = 1;
 
     VkImageView imageView = VK_NULL_HANDLE;
-    vkCreateImageView(device.logical, &viewInfo, nullptr, &imageView);
+    vkCreateImageView(rhiDevice.getLogical(), &viewInfo, nullptr, &imageView);
 
     // Begin dynamic rendering.
     VkRenderingAttachmentInfo colorAttachment{};
@@ -220,7 +181,7 @@ int main() {
     submit.pSignalSemaphoreInfos = &signalSem;
 
     VkResult submitResult =
-        vkQueueSubmit2(device.queue, 1, &submit, sync.inFlight);
+        vkQueueSubmit2(rhiDevice.getQueue(), 1, &submit, sync.inFlight);
     if (submitResult != VK_SUCCESS) {
       std::fprintf(stderr, "vkQueueSubmit2 failed: %d\n", submitResult);
     }
@@ -233,26 +194,22 @@ int main() {
     present.swapchainCount = 1;
     present.pSwapchains = &swapchain.handle;
     present.pImageIndices = &imageIndex;
-    vkQueuePresentKHR(device.queue, &present);
+    vkQueuePresentKHR(rhiDevice.getQueue(), &present);
 
-    vkDestroyImageView(device.logical, imageView, nullptr);
+    vkDestroyImageView(rhiDevice.getLogical(), imageView, nullptr);
   }
 
   // Wait for GPU before destroying anything.
-  vkDeviceWaitIdle(device.logical);
+  vkDeviceWaitIdle(rhiDevice.getLogical());
 
   // Cleanup (reverse of creation).
-  chemish::destroyPipeline(device.logical, pipeline);
-  chemish::destroyShader(device.logical, shaderModule);
-  chemish::destroyImageSemaphores(device.logical, imageSemaphores);
-  chemish::destroyImageSemaphores(device.logical, renderSemaphores);
-  chemish::destroyFrameSync(device.logical, sync);
-  chemish::destroyCommands(device.logical, commands);
-  chemish::destroySwapchain(device.logical, swapchain);
-  chemish::destroyDevice(device);
-  SDL_Vulkan_DestroySurface(instance, surface, nullptr);
-  chemish::destroyDebugMessenger(instance, messenger);
-  vkDestroyInstance(instance, nullptr);
+  chemish::destroyPipeline(rhiDevice.getLogical(), pipeline);
+  chemish::destroyShader(rhiDevice.getLogical(), shaderModule);
+  chemish::destroyImageSemaphores(rhiDevice.getLogical(), imageSemaphores);
+  chemish::destroyImageSemaphores(rhiDevice.getLogical(), renderSemaphores);
+  chemish::destroyFrameSync(rhiDevice.getLogical(), sync);
+  chemish::destroyCommands(rhiDevice.getLogical(), commands);
+  chemish::destroySwapchain(rhiDevice.getLogical(), swapchain);
   SDL_DestroyWindow(window);
   SDL_Quit();
   return 0;
