@@ -5,8 +5,8 @@
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 
-#include <chemish/commands.hpp>
 #include <chemish/pipeline.hpp>
+#include <chemish/rhi/vulkan/commands.hpp>
 #include <chemish/rhi/vulkan/device.hpp>
 #include <chemish/rhi/vulkan/swapchain.hpp>
 #include <chemish/shader.hpp>
@@ -20,8 +20,7 @@ int main() {
   {
     chemish::rhi::vulkan::Device rhiDevice{window};
     chemish::rhi::vulkan::Swapchain swapchain{rhiDevice};
-    chemish::Commands commands = chemish::createCommands(
-        rhiDevice.getLogical(), rhiDevice.getQueueFamily());
+    chemish::rhi::vulkan::Commands commands{rhiDevice};
     chemish::FrameSync sync = chemish::createFrameSync(rhiDevice.getLogical());
     std::vector<VkSemaphore> imageSemaphores = chemish::createImageSemaphores(
         rhiDevice.getLogical(), (uint32_t)swapchain.getImages().size());
@@ -57,11 +56,11 @@ int main() {
 
       VkSemaphore renderFinished = renderSemaphores[imageIndex];
 
-      vkResetCommandBuffer(commands.buffer, 0);
+      vkResetCommandBuffer(commands.getBuffer(), 0);
 
       VkCommandBufferBeginInfo beginInfo{};
       beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-      vkBeginCommandBuffer(commands.buffer, &beginInfo);
+      vkBeginCommandBuffer(commands.getBuffer(), &beginInfo);
 
       VkImageMemoryBarrier2 toDraw{};
       toDraw.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -80,7 +79,7 @@ int main() {
       dep1.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
       dep1.imageMemoryBarrierCount = 1;
       dep1.pImageMemoryBarriers = &toDraw;
-      vkCmdPipelineBarrier2(commands.buffer, &dep1);
+      vkCmdPipelineBarrier2(commands.getBuffer(), &dep1);
 
       VkImageViewCreateInfo viewInfo{};
       viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -109,23 +108,23 @@ int main() {
       renderingInfo.colorAttachmentCount = 1;
       renderingInfo.pColorAttachments = &colorAttachment;
 
-      vkCmdBeginRendering(commands.buffer, &renderingInfo);
+      vkCmdBeginRendering(commands.getBuffer(), &renderingInfo);
 
       VkViewport vp{};
       vp.width = (float)swapchain.getExtent().width;
       vp.height = (float)swapchain.getExtent().height;
       vp.maxDepth = 1.0f;
-      vkCmdSetViewport(commands.buffer, 0, 1, &vp);
+      vkCmdSetViewport(commands.getBuffer(), 0, 1, &vp);
 
       VkRect2D scissor{};
       scissor.extent = swapchain.getExtent();
-      vkCmdSetScissor(commands.buffer, 0, 1, &scissor);
+      vkCmdSetScissor(commands.getBuffer(), 0, 1, &scissor);
 
-      vkCmdBindPipeline(commands.buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+      vkCmdBindPipeline(commands.getBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS,
                         pipeline.handle);
-      vkCmdDraw(commands.buffer, 3, 1, 0, 0);
+      vkCmdDraw(commands.getBuffer(), 3, 1, 0, 0);
 
-      vkCmdEndRendering(commands.buffer);
+      vkCmdEndRendering(commands.getBuffer());
 
       VkImageMemoryBarrier2 toPresent = toDraw;
       toPresent.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -139,13 +138,13 @@ int main() {
       dep2.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
       dep2.imageMemoryBarrierCount = 1;
       dep2.pImageMemoryBarriers = &toPresent;
-      vkCmdPipelineBarrier2(commands.buffer, &dep2);
+      vkCmdPipelineBarrier2(commands.getBuffer(), &dep2);
 
-      vkEndCommandBuffer(commands.buffer);
+      vkEndCommandBuffer(commands.getBuffer());
 
       VkCommandBufferSubmitInfo cbSubmit{};
       cbSubmit.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-      cbSubmit.commandBuffer = commands.buffer;
+      cbSubmit.commandBuffer = commands.getBuffer();
 
       VkSemaphoreSubmitInfo waitSem{};
       waitSem.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
@@ -189,7 +188,6 @@ int main() {
     chemish::destroyImageSemaphores(rhiDevice.getLogical(), imageSemaphores);
     chemish::destroyImageSemaphores(rhiDevice.getLogical(), renderSemaphores);
     chemish::destroyFrameSync(rhiDevice.getLogical(), sync);
-    chemish::destroyCommands(rhiDevice.getLogical(), commands);
   } // Swapchain and rhiDevice destructors run here.
 
   SDL_DestroyWindow(window);
