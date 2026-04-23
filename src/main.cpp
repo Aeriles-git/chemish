@@ -8,8 +8,8 @@
 #include <chemish/commands.hpp>
 #include <chemish/pipeline.hpp>
 #include <chemish/rhi/vulkan/device.hpp>
+#include <chemish/rhi/vulkan/swapchain.hpp>
 #include <chemish/shader.hpp>
-#include <chemish/swapchain.hpp>
 #include <chemish/sync.hpp>
 
 int main() {
@@ -19,23 +19,20 @@ int main() {
 
   {
     chemish::rhi::vulkan::Device rhiDevice{window};
-    chemish::Swapchain swapchain = chemish::createSwapchain(
-        rhiDevice.getPhysical(), rhiDevice.getLogical(),
-        rhiDevice.getSurface());
+    chemish::rhi::vulkan::Swapchain swapchain{rhiDevice};
     chemish::Commands commands = chemish::createCommands(
         rhiDevice.getLogical(), rhiDevice.getQueueFamily());
     chemish::FrameSync sync = chemish::createFrameSync(rhiDevice.getLogical());
     std::vector<VkSemaphore> imageSemaphores = chemish::createImageSemaphores(
-        rhiDevice.getLogical(), (uint32_t)swapchain.images.size());
+        rhiDevice.getLogical(), (uint32_t)swapchain.getImages().size());
     std::vector<VkSemaphore> renderSemaphores = chemish::createImageSemaphores(
-        rhiDevice.getLogical(), (uint32_t)swapchain.images.size());
+        rhiDevice.getLogical(), (uint32_t)swapchain.getImages().size());
     uint32_t semaphoreIndex = 0;
     VkShaderModule shaderModule = chemish::loadShader(
         rhiDevice.getLogical(), "build/shaders/triangle.spv");
     chemish::Pipeline pipeline = chemish::createPipeline(
-        rhiDevice.getLogical(), shaderModule, swapchain.format);
+        rhiDevice.getLogical(), shaderModule, swapchain.getFormat());
 
-    // Render loop
     bool running = true;
     while (running) {
       SDL_Event event;
@@ -46,23 +43,20 @@ int main() {
           running = false;
       }
 
-      // 1. Wait for previous frame.
       vkWaitForFences(rhiDevice.getLogical(), 1, &sync.inFlight, VK_TRUE,
                       UINT64_MAX);
       vkResetFences(rhiDevice.getLogical(), 1, &sync.inFlight);
 
-      // 2. Acquire.
       VkSemaphore imageAvailable = imageSemaphores[semaphoreIndex];
       semaphoreIndex = (semaphoreIndex + 1) % imageSemaphores.size();
 
       uint32_t imageIndex = 0;
-      vkAcquireNextImageKHR(rhiDevice.getLogical(), swapchain.handle,
+      vkAcquireNextImageKHR(rhiDevice.getLogical(), swapchain.getHandle(),
                             UINT64_MAX, imageAvailable, VK_NULL_HANDLE,
                             &imageIndex);
 
       VkSemaphore renderFinished = renderSemaphores[imageIndex];
 
-      // 3. Record.
       vkResetCommandBuffer(commands.buffer, 0);
 
       VkCommandBufferBeginInfo beginInfo{};
@@ -77,7 +71,7 @@ int main() {
       toDraw.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
       toDraw.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
       toDraw.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-      toDraw.image = swapchain.images[imageIndex];
+      toDraw.image = swapchain.getImages()[imageIndex];
       toDraw.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
       toDraw.subresourceRange.levelCount = 1;
       toDraw.subresourceRange.layerCount = 1;
@@ -90,9 +84,9 @@ int main() {
 
       VkImageViewCreateInfo viewInfo{};
       viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-      viewInfo.image = swapchain.images[imageIndex];
+      viewInfo.image = swapchain.getImages()[imageIndex];
       viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-      viewInfo.format = swapchain.format;
+      viewInfo.format = swapchain.getFormat();
       viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
       viewInfo.subresourceRange.levelCount = 1;
       viewInfo.subresourceRange.layerCount = 1;
@@ -110,7 +104,7 @@ int main() {
 
       VkRenderingInfo renderingInfo{};
       renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-      renderingInfo.renderArea.extent = swapchain.extent;
+      renderingInfo.renderArea.extent = swapchain.getExtent();
       renderingInfo.layerCount = 1;
       renderingInfo.colorAttachmentCount = 1;
       renderingInfo.pColorAttachments = &colorAttachment;
@@ -118,13 +112,13 @@ int main() {
       vkCmdBeginRendering(commands.buffer, &renderingInfo);
 
       VkViewport vp{};
-      vp.width = (float)swapchain.extent.width;
-      vp.height = (float)swapchain.extent.height;
+      vp.width = (float)swapchain.getExtent().width;
+      vp.height = (float)swapchain.getExtent().height;
       vp.maxDepth = 1.0f;
       vkCmdSetViewport(commands.buffer, 0, 1, &vp);
 
       VkRect2D scissor{};
-      scissor.extent = swapchain.extent;
+      scissor.extent = swapchain.getExtent();
       vkCmdSetScissor(commands.buffer, 0, 1, &scissor);
 
       vkCmdBindPipeline(commands.buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -149,7 +143,6 @@ int main() {
 
       vkEndCommandBuffer(commands.buffer);
 
-      // 4. Submit.
       VkCommandBufferSubmitInfo cbSubmit{};
       cbSubmit.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
       cbSubmit.commandBuffer = commands.buffer;
@@ -175,13 +168,14 @@ int main() {
 
       vkQueueSubmit2(rhiDevice.getQueue(), 1, &submit, sync.inFlight);
 
-      // 5. Present.
+      VkSwapchainKHR swapchainHandle = swapchain.getHandle();
+
       VkPresentInfoKHR present{};
       present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
       present.waitSemaphoreCount = 1;
       present.pWaitSemaphores = &renderFinished;
       present.swapchainCount = 1;
-      present.pSwapchains = &swapchain.handle;
+      present.pSwapchains = &swapchainHandle;
       present.pImageIndices = &imageIndex;
       vkQueuePresentKHR(rhiDevice.getQueue(), &present);
 
@@ -196,8 +190,7 @@ int main() {
     chemish::destroyImageSemaphores(rhiDevice.getLogical(), renderSemaphores);
     chemish::destroyFrameSync(rhiDevice.getLogical(), sync);
     chemish::destroyCommands(rhiDevice.getLogical(), commands);
-    chemish::destroySwapchain(rhiDevice.getLogical(), swapchain);
-  } // rhiDevice destructor runs here, before SDL shutdown
+  } // Swapchain and rhiDevice destructors run here.
 
   SDL_DestroyWindow(window);
   SDL_Quit();
