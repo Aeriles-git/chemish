@@ -1,14 +1,14 @@
-#include <chemish/shader.hpp>
+#include <chemish/rhi/vulkan/device.hpp>
+#include <chemish/rhi/vulkan/shader.hpp>
 
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <vector>
 
-namespace chemish {
+namespace chemish::rhi::vulkan {
 
-VkShaderModule loadShader(VkDevice device, const std::string &path) {
-  // Read the file as binary.
+Shader::Shader(Device &dev, const std::string &path) : device(dev) {
   std::ifstream file(path, std::ios::binary | std::ios::ate);
   if (!file) {
     std::fprintf(stderr, "failed to open shader: %s\n", path.c_str());
@@ -20,19 +20,16 @@ VkShaderModule loadShader(VkDevice device, const std::string &path) {
   file.seekg(0);
   file.read(bytes.data(), size);
 
-  // Create the shader module.
   VkShaderModuleCreateInfo info{};
   info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
   info.codeSize = size;
   info.pCode = reinterpret_cast<const uint32_t *>(bytes.data());
 
-  VkShaderModule module = VK_NULL_HANDLE;
-  vkCreateShaderModule(device, &info, nullptr, &module);
-  return module;
+  vkCreateShaderModule(device.getLogical(), &info, nullptr, &module);
 }
 
-void destroyShader(VkDevice device, VkShaderModule shader) {
-  vkDestroyShaderModule(device, shader, nullptr);
+Shader::~Shader() {
+  vkDestroyShaderModule(device.getLogical(), module, nullptr);
 }
 
-} // namespace chemish
+} // namespace chemish::rhi::vulkan
