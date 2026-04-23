@@ -1,3 +1,6 @@
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
+
 #include <chemish/rhi/vulkan/device.hpp>
 
 #include <chemish/debug.hpp>
@@ -103,9 +106,17 @@ Device::Device(SDL_Window *win) : window(win) {
 
   vkCreateDevice(physical, &dci, nullptr, &logical);
   vkGetDeviceQueue(logical, queueFamily, 0, &queue);
+
+  VmaAllocatorCreateInfo allocatorInfo{};
+  allocatorInfo.physicalDevice = physical;
+  allocatorInfo.device = logical;
+  allocatorInfo.instance = instance;
+  allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_4;
+  vmaCreateAllocator(&allocatorInfo, &allocator);
 }
 
 Device::~Device() {
+  vmaDestroyAllocator(allocator);
   vkDestroyDevice(logical, nullptr);
   SDL_Vulkan_DestroySurface(instance, surface, nullptr);
   chemish::destroyDebugMessenger(instance, messenger);

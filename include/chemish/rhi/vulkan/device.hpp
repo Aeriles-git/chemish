@@ -2,6 +2,7 @@
 
 #include <chemish/rhi/device.hpp>
 
+#include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
 struct SDL_Window;
@@ -22,9 +23,9 @@ public:
   const VkDevice &getLogical() const { return logical; }
   const VkQueue &getQueue() const { return queue; }
   uint32_t getQueueFamily() const { return queueFamily; }
+  const VmaAllocator &getAllocator() const { return allocator; }
 
 private:
-  // Core Vulkan handles. These replace our old chemish::Device + globals.
   VkInstance instance = VK_NULL_HANDLE;
   VkDebugUtilsMessengerEXT messenger = VK_NULL_HANDLE;
   VkSurfaceKHR surface = VK_NULL_HANDLE;
@@ -32,8 +33,8 @@ private:
   VkDevice logical = VK_NULL_HANDLE;
   VkQueue queue = VK_NULL_HANDLE;
   uint32_t queueFamily = 0;
+  VmaAllocator allocator = VK_NULL_HANDLE;
 
-  // Window is borrowed, not owned. Device doesn't destroy it.
   SDL_Window *window = nullptr;
 };
 

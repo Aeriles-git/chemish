@@ -7,7 +7,8 @@ add_executable(chemish
     rhi/vulkan/commands.cpp
     rhi/vulkan/sync.cpp
     rhi/vulkan/shader.cpp
-  )
+    rhi/vulkan/buffer.cpp
+)
 
 target_include_directories(chemish PRIVATE
     ${CMAKE_SOURCE_DIR}/include
