@@ -6,6 +6,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+find_package(SDL3 REQUIRED CONFIG)
+find_package(Vulkan REQUIRED)
+
+include(FetchContent)
+FetchContent_Declare(vma
+    GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+    GIT_TAG        v3.3.0
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(vma)
+
 include(cmake/CompileShaders.cmake)
 
 add_subdirectory(src)
