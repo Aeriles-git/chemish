@@ -4,12 +4,14 @@
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 
+#include <chemish/rhi/vulkan/buffer.hpp>
 #include <chemish/rhi/vulkan/commands.hpp>
 #include <chemish/rhi/vulkan/device.hpp>
 #include <chemish/rhi/vulkan/pipeline.hpp>
 #include <chemish/rhi/vulkan/shader.hpp>
 #include <chemish/rhi/vulkan/swapchain.hpp>
 #include <chemish/rhi/vulkan/sync.hpp>
+#include <chemish/vertex.hpp>
 
 int main() {
   SDL_Init(SDL_INIT_VIDEO);
@@ -31,6 +33,15 @@ int main() {
                                         "build/shaders/triangle.spv"};
     chemish::rhi::vulkan::Pipeline pipeline{rhiDevice, shader,
                                             swapchain.getFormat()};
+
+    chemish::Vertex vertices[] = {
+        {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+    };
+    chemish::rhi::vulkan::Buffer vertexBuffer{rhiDevice, sizeof(vertices),
+                                              VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                              vertices};
 
     bool running = true;
     while (running) {
@@ -122,6 +133,10 @@ int main() {
 
       vkCmdBindPipeline(commands.getBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS,
                         pipeline.getHandle());
+
+      VkDeviceSize offset = 0;
+      vkCmdBindVertexBuffers(commands.getBuffer(), 0, 1,
+                             &vertexBuffer.getHandle(), &offset);
       vkCmdDraw(commands.getBuffer(), 3, 1, 0, 0);
 
       vkCmdEndRendering(commands.getBuffer());
