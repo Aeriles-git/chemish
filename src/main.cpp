@@ -1,3 +1,4 @@
+#include <chemish/camera.hpp>
 #include <chemish/mesh.hpp>
 #include <chemish/renderer.hpp>
 #include <chemish/vertex.hpp>
@@ -20,6 +21,7 @@ int main() {
         {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
     };
     chemish::MeshHandle triangle = renderer.createMesh(vertices);
+    chemish::Camera camera;
 
     bool running = true;
     while (running) {
@@ -30,6 +32,7 @@ int main() {
         if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE)
           running = false;
       }
+      renderer.updateCamera(camera);
       renderer.drawFrame(triangle);
     }
   }

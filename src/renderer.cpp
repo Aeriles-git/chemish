@@ -9,7 +9,9 @@ Renderer::Renderer(SDL_Window *window)
       imageSemaphores(device, (uint32_t)swapchain.getImages().size()),
       renderSemaphores(device, (uint32_t)swapchain.getImages().size()),
       shader(device, "build/shaders/triangle.spv"),
-      pipeline(device, shader, swapchain.getFormat()) {}
+      pipeline(device, shader, swapchain.getFormat()),
+      cameraBuffer(device, sizeof(CameraUniform),
+                   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) {}
 
 Renderer::~Renderer() { vkDeviceWaitIdle(device.getLogical()); }
 
@@ -21,6 +23,12 @@ MeshHandle Renderer::createMesh(const std::vector<Vertex> &vertices) {
                           VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices.data()},
       (uint32_t)vertices.size());
   return handle;
+}
+
+void Renderer::updateCamera(const Camera &camera) {
+  CameraUniform data{};
+  data.viewProj = camera.projection() * camera.view();
+  cameraBuffer.write(&data, sizeof(data));
 }
 
 void Renderer::drawFrame(MeshHandle handle) {

@@ -24,6 +24,8 @@ public:
   const VkBuffer &getHandle() const { return handle; }
   size_t getSize() const { return size; }
 
+  void write(const void *data, size_t size);
+
 private:
   Device *device = nullptr;
   VkBuffer handle = VK_NULL_HANDLE;

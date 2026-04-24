@@ -19,6 +19,7 @@ target_link_libraries(chemish PRIVATE
     SDL3::SDL3
     Vulkan::Vulkan
     GPUOpen::VulkanMemoryAllocator
+    glm::glm
 )
 
 target_compile_options(chemish PRIVATE

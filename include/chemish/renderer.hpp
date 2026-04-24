@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chemish/camera.hpp>
 #include <chemish/mesh.hpp>
 #include <chemish/rhi/vulkan/buffer.hpp>
 #include <chemish/rhi/vulkan/commands.hpp>
@@ -27,6 +28,7 @@ public:
 
   MeshHandle createMesh(const std::vector<Vertex> &vertices);
   void drawFrame(MeshHandle mesh);
+  void updateCamera(const Camera &camera);
 
 private:
   struct Mesh {
@@ -45,6 +47,7 @@ private:
   rhi::vulkan::ImageSemaphores renderSemaphores;
   rhi::vulkan::Shader shader;
   rhi::vulkan::Pipeline pipeline;
+  rhi::vulkan::Buffer cameraBuffer;
 
   std::unordered_map<uint32_t, Mesh> meshes;
   uint32_t nextMeshId = 1;

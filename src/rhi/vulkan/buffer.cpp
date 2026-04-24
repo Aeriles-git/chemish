@@ -5,6 +5,12 @@
 
 namespace chemish::rhi::vulkan {
 
+void Buffer::write(const void *data, size_t writeSize) {
+  VmaAllocationInfo info{};
+  vmaGetAllocationInfo(device->getAllocator(), allocation, &info);
+  std::memcpy(info.pMappedData, data, writeSize);
+}
+
 Buffer::Buffer(Device &dev, size_t sz, VkBufferUsageFlags usage,
                const void *initialData)
     : device(&dev), size(sz) {
