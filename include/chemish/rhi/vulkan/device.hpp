@@ -50,4 +50,6 @@ private:
   SDL_Window *window = nullptr;
 };
 
+std::unique_ptr<Device> createVulkanDevice(struct SDL_Window *window);
+
 } // namespace chemish::rhi::vulkan

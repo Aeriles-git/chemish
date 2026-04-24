@@ -136,3 +136,11 @@ std::unique_ptr<rhi::Shader> Device::createShader(const std::string &spvPath) {
 }
 
 } // namespace chemish::rhi::vulkan
+
+namespace chemish::rhi {
+
+std::unique_ptr<Device> createVulkanDevice(struct SDL_Window *window) {
+  return std::make_unique<vulkan::Device>(window);
+}
+
+} // namespace chemish::rhi

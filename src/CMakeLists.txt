@@ -1,5 +1,6 @@
 add_executable(chemish
     main.cpp
+    renderer.cpp
     debug.cpp
     rhi/vulkan/pipeline.cpp
     rhi/vulkan/device.cpp
