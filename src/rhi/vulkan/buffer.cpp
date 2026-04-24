@@ -7,7 +7,7 @@ namespace chemish::rhi::vulkan {
 
 Buffer::Buffer(Device &dev, size_t sz, VkBufferUsageFlags usage,
                const void *initialData)
-    : device(dev), size(sz) {
+    : device(&dev), size(sz) {
   VkBufferCreateInfo bufInfo{};
   bufInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   bufInfo.size = size;
@@ -20,7 +20,7 @@ Buffer::Buffer(Device &dev, size_t sz, VkBufferUsageFlags usage,
                     VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
   VmaAllocationInfo info{};
-  vmaCreateBuffer(device.getAllocator(), &bufInfo, &allocInfo, &handle,
+  vmaCreateBuffer(device->getAllocator(), &bufInfo, &allocInfo, &handle,
                   &allocation, &info);
 
   if (initialData) {
@@ -28,8 +28,17 @@ Buffer::Buffer(Device &dev, size_t sz, VkBufferUsageFlags usage,
   }
 }
 
+Buffer::Buffer(Buffer &&other) noexcept
+    : device(other.device), handle(other.handle), allocation(other.allocation),
+      size(other.size) {
+  other.handle = VK_NULL_HANDLE;
+  other.allocation = VK_NULL_HANDLE;
+}
+
 Buffer::~Buffer() {
-  vmaDestroyBuffer(device.getAllocator(), handle, allocation);
+  if (handle != VK_NULL_HANDLE) {
+    vmaDestroyBuffer(device->getAllocator(), handle, allocation);
+  }
 }
 
 } // namespace chemish::rhi::vulkan

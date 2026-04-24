@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chemish/mesh.hpp>
 #include <chemish/rhi/vulkan/buffer.hpp>
 #include <chemish/rhi/vulkan/commands.hpp>
 #include <chemish/rhi/vulkan/device.hpp>
@@ -7,6 +8,10 @@
 #include <chemish/rhi/vulkan/shader.hpp>
 #include <chemish/rhi/vulkan/swapchain.hpp>
 #include <chemish/rhi/vulkan/sync.hpp>
+#include <chemish/vertex.hpp>
+
+#include <unordered_map>
+#include <vector>
 
 struct SDL_Window;
 
@@ -20,9 +25,18 @@ public:
   Renderer(const Renderer &) = delete;
   Renderer &operator=(const Renderer &) = delete;
 
-  void drawFrame();
+  MeshHandle createMesh(const std::vector<Vertex> &vertices);
+  void drawFrame(MeshHandle mesh);
 
 private:
+  struct Mesh {
+    rhi::vulkan::Buffer buffer;
+    uint32_t vertexCount;
+
+    Mesh(rhi::vulkan::Buffer &&b, uint32_t c)
+        : buffer(std::move(b)), vertexCount(c) {}
+  };
+
   rhi::vulkan::Device device;
   rhi::vulkan::Swapchain swapchain;
   rhi::vulkan::Commands commands;
@@ -31,8 +45,9 @@ private:
   rhi::vulkan::ImageSemaphores renderSemaphores;
   rhi::vulkan::Shader shader;
   rhi::vulkan::Pipeline pipeline;
-  rhi::vulkan::Buffer vertexBuffer;
 
+  std::unordered_map<uint32_t, Mesh> meshes;
+  uint32_t nextMeshId = 1;
   uint32_t semaphoreIndex = 0;
 };
 

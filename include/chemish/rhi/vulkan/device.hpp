@@ -1,12 +1,5 @@
 #pragma once
 
-#include <chemish/rhi/buffer.hpp>
-#include <chemish/rhi/device.hpp>
-#include <chemish/rhi/shader.hpp>
-
-#include <memory>
-#include <string>
-
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
@@ -14,20 +7,16 @@ struct SDL_Window;
 
 namespace chemish::rhi::vulkan {
 
-class Device : public rhi::Device {
+class Device {
 
 public:
   Device(SDL_Window *window);
-  ~Device() override;
+  ~Device();
 
   Device(const Device &) = delete;
   Device &operator=(const Device &) = delete;
 
   // rhi::Device implementation
-  std::unique_ptr<rhi::Buffer>
-  createVertexBuffer(size_t size, const void *initialData) override;
-  std::unique_ptr<rhi::Shader>
-  createShader(const std::string &spvPath) override;
 
   const VkInstance &getInstance() const { return instance; }
   const VkSurfaceKHR &getSurface() const { return surface; }
@@ -49,7 +38,5 @@ private:
 
   SDL_Window *window = nullptr;
 };
-
-std::unique_ptr<Device> createVulkanDevice(struct SDL_Window *window);
 
 } // namespace chemish::rhi::vulkan

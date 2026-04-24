@@ -1,6 +1,10 @@
+#include <chemish/mesh.hpp>
 #include <chemish/renderer.hpp>
+#include <chemish/vertex.hpp>
 
 #include <SDL3/SDL.h>
+
+#include <vector>
 
 int main() {
   SDL_Init(SDL_INIT_VIDEO);
@@ -9,6 +13,13 @@ int main() {
 
   {
     chemish::Renderer renderer{window};
+
+    std::vector<chemish::Vertex> vertices = {
+        {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+    };
+    chemish::MeshHandle triangle = renderer.createMesh(vertices);
 
     bool running = true;
     while (running) {
@@ -19,7 +30,7 @@ int main() {
         if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE)
           running = false;
       }
-      renderer.drawFrame();
+      renderer.drawFrame(triangle);
     }
   }
 

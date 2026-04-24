@@ -1,9 +1,7 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
 
-#include <chemish/rhi/vulkan/buffer.hpp>
 #include <chemish/rhi/vulkan/device.hpp>
-#include <chemish/rhi/vulkan/shader.hpp>
 
 #include <chemish/debug.hpp>
 
@@ -125,22 +123,4 @@ Device::~Device() {
   vkDestroyInstance(instance, nullptr);
 }
 
-std::unique_ptr<rhi::Buffer>
-Device::createVertexBuffer(size_t size, const void *initialData) {
-  return std::make_unique<Buffer>(
-      *this, size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, initialData);
-}
-
-std::unique_ptr<rhi::Shader> Device::createShader(const std::string &spvPath) {
-  return std::make_unique<Shader>(*this, spvPath);
-}
-
 } // namespace chemish::rhi::vulkan
-
-namespace chemish::rhi {
-
-std::unique_ptr<Device> createVulkanDevice(struct SDL_Window *window) {
-  return std::make_unique<vulkan::Device>(window);
-}
-
-} // namespace chemish::rhi

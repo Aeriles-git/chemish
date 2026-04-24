@@ -1,32 +1,31 @@
 #include <chemish/renderer.hpp>
-#include <chemish/vertex.hpp>
 
 #include <vulkan/vulkan.h>
 
 namespace chemish {
-
-namespace {
-
-Vertex triangleVertices[] = {
-    {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-};
-
-} // anonymous namespace
 
 Renderer::Renderer(SDL_Window *window)
     : device(window), swapchain(device), commands(device), sync(device),
       imageSemaphores(device, (uint32_t)swapchain.getImages().size()),
       renderSemaphores(device, (uint32_t)swapchain.getImages().size()),
       shader(device, "build/shaders/triangle.spv"),
-      pipeline(device, shader, swapchain.getFormat()),
-      vertexBuffer(device, sizeof(triangleVertices),
-                   VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, triangleVertices) {}
+      pipeline(device, shader, swapchain.getFormat()) {}
 
 Renderer::~Renderer() { vkDeviceWaitIdle(device.getLogical()); }
 
-void Renderer::drawFrame() {
+MeshHandle Renderer::createMesh(const std::vector<Vertex> &vertices) {
+  MeshHandle handle{nextMeshId++};
+  meshes.try_emplace(
+      handle.id,
+      rhi::vulkan::Buffer{device, vertices.size() * sizeof(Vertex),
+                          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertices.data()},
+      (uint32_t)vertices.size());
+  return handle;
+}
+
+void Renderer::drawFrame(MeshHandle handle) {
+  const Mesh &mesh = meshes.at(handle.id);
+
   VkFence fence = sync.getFence();
   vkWaitForFences(device.getLogical(), 1, &fence, VK_TRUE, UINT64_MAX);
   vkResetFences(device.getLogical(), 1, &fence);
@@ -108,9 +107,9 @@ void Renderer::drawFrame() {
                     pipeline.getHandle());
 
   VkDeviceSize offset = 0;
-  vkCmdBindVertexBuffers(commands.getBuffer(), 0, 1, &vertexBuffer.getHandle(),
+  vkCmdBindVertexBuffers(commands.getBuffer(), 0, 1, &mesh.buffer.getHandle(),
                          &offset);
-  vkCmdDraw(commands.getBuffer(), 3, 1, 0, 0);
+  vkCmdDraw(commands.getBuffer(), mesh.vertexCount, 1, 0, 0);
 
   vkCmdEndRendering(commands.getBuffer());
 
