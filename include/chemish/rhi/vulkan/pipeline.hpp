@@ -9,9 +9,9 @@ class Shader;
 
 class Pipeline {
 public:
-  Pipeline(Device &device, Shader &shader, VkFormat colorFormat);
+  Pipeline(Device &device, Shader &shader, VkFormat colorFormat,
+           VkDescriptorSetLayout setLayout);
   ~Pipeline();
-
   Pipeline(const Pipeline &) = delete;
   Pipeline &operator=(const Pipeline &) = delete;
 

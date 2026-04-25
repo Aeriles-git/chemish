@@ -4,11 +4,13 @@
 
 namespace chemish::rhi::vulkan {
 
-Pipeline::Pipeline(Device &dev, Shader &shader, VkFormat colorFormat)
+Pipeline::Pipeline(Device &dev, Shader &shader, VkFormat colorFormat,
+                   VkDescriptorSetLayout setLayout)
     : device(dev) {
-  // Empty layout: no uniforms.
   VkPipelineLayoutCreateInfo layoutInfo{};
   layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  layoutInfo.setLayoutCount = 1;
+  layoutInfo.pSetLayouts = &setLayout;
   vkCreatePipelineLayout(device.getLogical(), &layoutInfo, nullptr, &layout);
 
   VkPipelineShaderStageCreateInfo stages[2]{};

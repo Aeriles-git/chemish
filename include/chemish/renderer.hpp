@@ -4,6 +4,7 @@
 #include <chemish/mesh.hpp>
 #include <chemish/rhi/vulkan/buffer.hpp>
 #include <chemish/rhi/vulkan/commands.hpp>
+#include <chemish/rhi/vulkan/descriptor_set.hpp>
 #include <chemish/rhi/vulkan/device.hpp>
 #include <chemish/rhi/vulkan/pipeline.hpp>
 #include <chemish/rhi/vulkan/shader.hpp>
@@ -46,8 +47,9 @@ private:
   rhi::vulkan::ImageSemaphores imageSemaphores;
   rhi::vulkan::ImageSemaphores renderSemaphores;
   rhi::vulkan::Shader shader;
-  rhi::vulkan::Pipeline pipeline;
   rhi::vulkan::Buffer cameraBuffer;
+  rhi::vulkan::DescriptorSet cameraDescriptor;
+  rhi::vulkan::Pipeline pipeline;
 
   std::unordered_map<uint32_t, Mesh> meshes;
   uint32_t nextMeshId = 1;

@@ -9,6 +9,7 @@ add_executable(chemish
     rhi/vulkan/sync.cpp
     rhi/vulkan/shader.cpp
     rhi/vulkan/buffer.cpp
+    rhi/vulkan/descriptor_set.cpp
 )
 
 target_include_directories(chemish PRIVATE

@@ -9,9 +9,11 @@ Renderer::Renderer(SDL_Window *window)
       imageSemaphores(device, (uint32_t)swapchain.getImages().size()),
       renderSemaphores(device, (uint32_t)swapchain.getImages().size()),
       shader(device, "build/shaders/triangle.spv"),
-      pipeline(device, shader, swapchain.getFormat()),
       cameraBuffer(device, sizeof(CameraUniform),
-                   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) {}
+                   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+      cameraDescriptor(device, cameraBuffer),
+      pipeline(device, shader, swapchain.getFormat(),
+               cameraDescriptor.getLayout()) {}
 
 Renderer::~Renderer() { vkDeviceWaitIdle(device.getLogical()); }
 
@@ -113,6 +115,10 @@ void Renderer::drawFrame(MeshHandle handle) {
 
   vkCmdBindPipeline(commands.getBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS,
                     pipeline.getHandle());
+
+  VkDescriptorSet ds = cameraDescriptor.getHandle();
+  vkCmdBindDescriptorSets(commands.getBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          pipeline.getLayout(), 0, 1, &ds, 0, nullptr);
 
   VkDeviceSize offset = 0;
   vkCmdBindVertexBuffers(commands.getBuffer(), 0, 1, &mesh.buffer.getHandle(),
