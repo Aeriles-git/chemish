@@ -7,7 +7,8 @@ target_include_directories(chemish PRIVATE
 )
 
 target_compile_definitions(chemish PRIVATE
-    VULKAN_HPP_NO_STRUCT_CONSTRUCTORS=1
+  VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
+  VULKAN_HPP_NO_STRUCT_CONSTRUCTORS=1
 )
 
 target_link_libraries(chemish PRIVATE
